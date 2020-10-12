@@ -1,0 +1,71 @@
+#!/bin/bash
+set -e
+set -o pipefail
+
+
+if [[ -z "${DB_HOST}" ]]; then
+    echo "Error: DB_HOST not set"
+    exit 1
+fi
+
+if [[ -z "${DB_NAME}" ]]; then
+    echo "Error: DB_NAME not set"
+    exit 1
+fi
+
+if [[ -z "${DB_USER}" ]]; then
+    echo "Error: DB_USER not set"
+    exit 1
+fi
+
+if [[ -z "${DB_PASS}" ]]; then
+    echo "Error: DB_PASS not set"
+    exit 1
+fi
+
+if [[ -z "${MEDIA_ROOT}" ]]; then
+    echo "Error: MEDIA_ROOT not set"
+    exit 1
+fi
+
+if [[ -z "${BACKUPS_PATH}" ]]; then
+    echo "Error: BACKUPS_PATH not set"
+    exit 1
+fi
+
+filename=$1
+
+if [[ -z "${filename}" ]]; then
+    echo "Error: backup name missing"
+    echo "Please specify a backup name. e.g. 'restore 20201012'"
+    exit 1
+fi
+
+SQL_ARCHIVE="${BACKUPS_PATH}/${filename}.dump"
+FILES_ARCHIVE="${BACKUPS_PATH}/${filename}.tar.gz"
+
+if [[ ! -f "${SQL_ARCHIVE}" ]]; then
+    echo "Error: The file ${SQL_ARCHIVE} does not exist."
+    exit 1
+fi
+
+if [[ -z "${FILES_ARCHIVE}" ]]; then
+    echo "Error: The file ${FILES_ARCHIVE} does not exist."
+    exit 1
+fi
+
+echo "restoring database to ${DB_NAME}"
+pg_restore \
+    --no-owner \
+    --clean \
+    --dbname="postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}" \
+    "${BACKUPS_PATH}/${filename}.dump"
+
+
+# cleanup media folder
+echo "removing files from ${MEDIA_ROOT}"
+rm -Rf "${MEDIA_ROOT}"/*
+
+# restore media files
+echo "extracting files to ${MEDIA_ROOT}"
+tar -xzf "${BACKUPS_PATH}/${filename}.tar.gz" --directory="${MEDIA_ROOT}"

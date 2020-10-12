@@ -1,0 +1,57 @@
+#!/bin/bash
+set -e
+set -o pipefail
+
+cleanup() {
+  echo "Cleanup backup older than ${CLEANUP_OLDER_THAN} days"
+  toberemoved=$(find "${BACKUPS_PATH}" -type f -not -name ".*" -mtime +"${CLEANUP_OLDER_THAN}" | wc -l)
+  echo "Will try to remove ${toberemoved} files"
+  find "${BACKUPS_PATH}" -type f -not -name ".*" -mtime +"${CLEANUP_OLDER_THAN}" -exec rm {} \;
+}
+
+if [[ -z "${DB_HOST}" ]]; then
+    echo "Error: DB_HOST not set"
+    exit 1
+fi
+
+if [[ -z "${DB_NAME}" ]]; then
+    echo "Error: DB_NAME not set"
+    exit 1
+fi
+
+if [[ -z "${DB_USER}" ]]; then
+    echo "Error: DB_USER not set"
+    exit 1
+fi
+
+if [[ -z "${DB_PASS}" ]]; then
+    echo "Error: DB_PASS not set"
+    exit 1
+fi
+
+if [[ -z "${MEDIA_ROOT}" ]]; then
+    echo "Error: MEDIA_ROOT not set"
+    exit 1
+fi
+
+if [[ -z "${BACKUPS_PATH}" ]]; then
+    echo "Error: BACKUPS_PATH not set"
+    exit 1
+fi
+
+filename=$(date +"%Y%m%d")
+mkdir -p "${BACKUPS_PATH}"
+
+# Backup database (schema & data only)
+echo "creating database dump"
+pg_dump \
+    --dbname="postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}" \
+    --format=c \
+    --file="${BACKUPS_PATH}/${filename}.dump"
+
+# Backup Media
+echo "creating zip archive of media files"
+tar --create --gzip -vv \
+    --directory="${MEDIA_ROOT}" \
+    --file="${BACKUPS_PATH}/${filename}.tar.gz" \
+    "./"
