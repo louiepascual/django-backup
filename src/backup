@@ -39,6 +39,10 @@ if [[ -z "${BACKUPS_PATH}" ]]; then
     exit 1
 fi
 
+if [[ -n "${CLEANUP_OLDER_THAN}" ]]; then
+    cleanup
+fi
+
 filename=$(date +"%Y%m%d")
 mkdir -p "${BACKUPS_PATH}"
 
